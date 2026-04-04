@@ -16,8 +16,8 @@ const Index = () => {
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if (transcript.trim()) {
-        addEntry(transcript);
+      if (finalTranscript.trim()) {
+        addEntry(finalTranscript);
         resetTranscript();
       }
     } else {
