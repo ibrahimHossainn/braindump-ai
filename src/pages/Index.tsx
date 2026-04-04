@@ -9,7 +9,7 @@ import { useBrainDump, type Category } from "@/hooks/useBrainDump";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Category>("tasks");
-  const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } =
+  const { isListening, finalTranscript, interimTranscript, startListening, stopListening, resetTranscript, isSupported } =
     useSpeechRecognition();
   const { addEntry, deleteEntry, toggleDone, getByCategory, entries } = useBrainDump();
 
