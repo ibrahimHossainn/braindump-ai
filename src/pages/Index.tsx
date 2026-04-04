@@ -9,15 +9,15 @@ import { useBrainDump, type Category } from "@/hooks/useBrainDump";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Category>("tasks");
-  const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } =
+  const { isListening, finalTranscript, interimTranscript, startListening, stopListening, resetTranscript, isSupported } =
     useSpeechRecognition();
   const { addEntry, deleteEntry, toggleDone, getByCategory, entries } = useBrainDump();
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if (transcript.trim()) {
-        addEntry(transcript);
+      if (finalTranscript.trim()) {
+        addEntry(finalTranscript);
         resetTranscript();
       }
     } else {
@@ -79,7 +79,7 @@ const Index = () => {
 
       {/* Transcript */}
       <div className="px-4 max-w-lg mx-auto w-full">
-        <TranscriptDisplay transcript={transcript} isListening={isListening} />
+        <TranscriptDisplay finalTranscript={finalTranscript} interimTranscript={interimTranscript} isListening={isListening} />
       </div>
 
       {/* Tabs + Entries */}

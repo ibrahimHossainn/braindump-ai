@@ -1,10 +1,11 @@
 interface TranscriptDisplayProps {
-  transcript: string;
+  finalTranscript: string;
+  interimTranscript: string;
   isListening: boolean;
 }
 
-const TranscriptDisplay = ({ transcript, isListening }: TranscriptDisplayProps) => {
-  if (!isListening && !transcript) return null;
+const TranscriptDisplay = ({ finalTranscript, interimTranscript, isListening }: TranscriptDisplayProps) => {
+  if (!isListening && !finalTranscript && !interimTranscript) return null;
 
   return (
     <div className="glass-card p-4 animate-scale-in">
@@ -18,8 +19,14 @@ const TranscriptDisplay = ({ transcript, isListening }: TranscriptDisplayProps) 
           </span>
         )}
       </div>
-      <p className="text-sm text-foreground/80 leading-relaxed min-h-[1.5rem]">
-        {transcript || (
+      <p className="text-sm leading-relaxed min-h-[1.5rem]">
+        {finalTranscript && (
+          <span className="text-foreground/90">{finalTranscript}</span>
+        )}
+        {interimTranscript && (
+          <span className="text-muted-foreground/60 italic"> {interimTranscript}</span>
+        )}
+        {!finalTranscript && !interimTranscript && (
           <span className="text-muted-foreground italic">Speak now...</span>
         )}
       </p>
