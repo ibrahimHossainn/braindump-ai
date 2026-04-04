@@ -79,7 +79,7 @@ const Index = () => {
 
       {/* Transcript */}
       <div className="px-4 max-w-lg mx-auto w-full">
-        <TranscriptDisplay transcript={transcript} isListening={isListening} />
+        <TranscriptDisplay finalTranscript={finalTranscript} interimTranscript={interimTranscript} isListening={isListening} />
       </div>
 
       {/* Tabs + Entries */}
