@@ -63,9 +63,17 @@ const Index = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mono">
-            <Sparkles className="w-3.5 h-3.5 text-neon-purple" />
-            <span>{entries.length} captured</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setShowSearch(!showSearch); setSearchQuery(""); }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-neon-cyan transition-colors"
+            >
+              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mono">
+              <Sparkles className="w-3.5 h-3.5 text-neon-purple" />
+              <span>{entries.length}</span>
+            </div>
           </div>
         </div>
       </header>
