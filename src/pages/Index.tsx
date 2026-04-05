@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Brain, Sparkles } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Brain, Sparkles, Search, X } from "lucide-react";
 import MicButton from "@/components/MicButton";
 import CategoryTabs from "@/components/CategoryTabs";
 import EntryCard from "@/components/EntryCard";
@@ -10,6 +10,8 @@ import { useBrainDump, type Category } from "@/hooks/useBrainDump";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Category>("tasks");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const { isListening, finalTranscript, interimTranscript, startListening, stopListening, resetTranscript, isSupported } =
     useSpeechRecognition();
   const { addEntry, deleteEntry, toggleDone, getByCategory, entries } = useBrainDump();
@@ -29,7 +31,13 @@ const Index = () => {
     }
   };
 
-  const filtered = getByCategory(activeTab);
+  const filtered = useMemo(() => {
+    const byCategory = getByCategory(activeTab);
+    if (!searchQuery.trim()) return byCategory;
+    const q = searchQuery.toLowerCase();
+    return byCategory.filter((e) => e.text.toLowerCase().includes(q));
+  }, [activeTab, getByCategory, searchQuery]);
+
   const counts: Record<Category, number> = {
     tasks: getByCategory("tasks").length,
     ideas: getByCategory("ideas").length,
@@ -55,9 +63,17 @@ const Index = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mono">
-            <Sparkles className="w-3.5 h-3.5 text-neon-purple" />
-            <span>{entries.length} captured</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setShowSearch(!showSearch); setSearchQuery(""); }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-neon-cyan transition-colors"
+            >
+              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mono">
+              <Sparkles className="w-3.5 h-3.5 text-neon-purple" />
+              <span>{entries.length}</span>
+            </div>
           </div>
         </div>
       </header>
@@ -85,6 +101,23 @@ const Index = () => {
       <div className="px-4 max-w-lg mx-auto w-full">
         <TranscriptDisplay finalTranscript={finalTranscript} interimTranscript={interimTranscript} isListening={isListening} />
       </div>
+
+      {/* Search */}
+      {showSearch && (
+        <div className="px-4 max-w-lg mx-auto w-full pb-2">
+          <div className="glass-card flex items-center gap-2 px-3 py-2">
+            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search notes..."
+              autoFocus
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Tabs + Entries */}
       <section className="flex-1 px-4 pt-6 pb-8">
