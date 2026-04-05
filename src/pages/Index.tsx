@@ -13,13 +13,15 @@ const Index = () => {
     useSpeechRecognition();
   const { addEntry, deleteEntry, toggleDone, getByCategory, entries } = useBrainDump();
 
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (isListening) {
-      stopListening();
-      if (finalTranscript.trim()) {
-        addEntry(finalTranscript);
-        resetTranscript();
+      const transcript = await stopListening();
+
+      if (transcript.trim()) {
+        addEntry(transcript);
       }
+
+      resetTranscript();
     } else {
       startListening();
     }
