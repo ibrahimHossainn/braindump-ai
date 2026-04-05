@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Brain, Sparkles } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Brain, Sparkles, Search, X } from "lucide-react";
 import MicButton from "@/components/MicButton";
 import CategoryTabs from "@/components/CategoryTabs";
 import EntryCard from "@/components/EntryCard";
@@ -10,6 +10,8 @@ import { useBrainDump, type Category } from "@/hooks/useBrainDump";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Category>("tasks");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const { isListening, finalTranscript, interimTranscript, startListening, stopListening, resetTranscript, isSupported } =
     useSpeechRecognition();
   const { addEntry, deleteEntry, toggleDone, getByCategory, entries } = useBrainDump();
