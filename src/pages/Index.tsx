@@ -102,6 +102,23 @@ const Index = () => {
         <TranscriptDisplay finalTranscript={finalTranscript} interimTranscript={interimTranscript} isListening={isListening} />
       </div>
 
+      {/* Search */}
+      {showSearch && (
+        <div className="px-4 max-w-lg mx-auto w-full pb-2">
+          <div className="glass-card flex items-center gap-2 px-3 py-2">
+            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search notes..."
+              autoFocus
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Tabs + Entries */}
       <section className="flex-1 px-4 pt-6 pb-8">
         <div className="max-w-lg mx-auto space-y-4">
