@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SpeechRecognitionHook {
   isListening: boolean;
@@ -10,8 +10,38 @@ interface SpeechRecognitionHook {
   isSupported: boolean;
 }
 
-const DEBOUNCE_MS = 350;
-const SILENCE_MS = 1200;
+const DEBOUNCE_MS = 450;
+const SILENCE_MS = 1500;
+
+interface SpeechRecognitionAlternativeLike {
+  transcript?: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface BrowserSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives?: number;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onspeechend: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
 
@@ -27,6 +57,8 @@ const dedupeAdjacentWords = (value: string) => {
 
 const cleanTranscript = (value: string) => dedupeAdjacentWords(normalizeWhitespace(value));
 
+const getWords = (value: string) => cleanTranscript(value).split(" ").filter(Boolean);
+
 const getComparableWords = (value: string) =>
   cleanTranscript(value)
     .split(" ")
@@ -35,6 +67,9 @@ const getComparableWords = (value: string) =>
 
 const wordsMatch = (left: string[], right: string[]) =>
   left.length === right.length && left.every((word, index) => word === right[index]);
+
+const getOrderedSegmentValues = (segments: Map<number, string>) =>
+  [...segments.entries()].sort(([left], [right]) => left - right).map(([, value]) => value);
 
 const mergeTranscript = (existing: string, incoming: string) => {
   const base = cleanTranscript(existing);
@@ -80,21 +115,58 @@ const mergeTranscript = (existing: string, incoming: string) => {
   return cleanTranscript([...baseWords, ...nextWords.slice(overlap)].join(" "));
 };
 
+const buildTranscript = (segments: string[]) =>
+  segments.reduce((transcript, segment) => mergeTranscript(transcript, segment), "");
+
+const stripCommittedPrefix = (committed: string, incoming: string) => {
+  const committedComparable = getComparableWords(committed);
+  const incomingWords = getWords(incoming);
+  const incomingComparable = incomingWords.map(normalizeWord).filter(Boolean);
+
+  if (!committedComparable.length || !incomingComparable.length) {
+    return cleanTranscript(incoming);
+  }
+
+  let overlap = 0;
+  const maxOverlap = Math.min(committedComparable.length, incomingComparable.length);
+
+  for (let size = maxOverlap; size > 0; size -= 1) {
+    const committedSlice = committedComparable.slice(committedComparable.length - size);
+    const incomingSlice = incomingComparable.slice(0, size);
+
+    if (wordsMatch(committedSlice, incomingSlice)) {
+      overlap = size;
+      break;
+    }
+  }
+
+  return cleanTranscript(incomingWords.slice(overlap).join(" "));
+};
+
 export function useSpeechRecognition(): SpeechRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [finalTranscript, setFinalTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
 
-  const recognitionRef = useRef<any>(null);
-  const finalBufferRef = useRef("");
-  const lastFinalRef = useRef("");
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const finalSegmentsRef = useRef(new Map<number, string>());
+  const lastFinalTranscriptRef = useRef("");
+  const lastCommittedTranscriptRef = useRef("");
+  const pendingTranscriptRef = useRef("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopResolverRef = useRef<((value: string) => void) | null>(null);
 
   const SpeechRecognition =
     typeof window !== "undefined"
-      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      ? (((window as Window & {
+          SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+          webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+        }).SpeechRecognition ||
+          (window as Window & {
+            SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+            webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+          }).webkitSpeechRecognition) ?? null)
       : null;
 
   const isSupported = !!SpeechRecognition;
@@ -113,22 +185,67 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     }
   }, []);
 
-  const flushFinalTranscript = useCallback(() => {
-    clearDebounce();
-    setFinalTranscript(cleanTranscript(finalBufferRef.current));
-  }, [clearDebounce]);
+  const getResolvedFinalTranscript = useCallback(() => {
+    const transcript = buildTranscript(getOrderedSegmentValues(finalSegmentsRef.current));
+    return cleanTranscript(transcript);
+  }, []);
 
-  const scheduleFinalTranscript = useCallback(() => {
+  const commitFinalTranscript = useCallback(
+    (value: string) => {
+      const cleaned = cleanTranscript(value);
+
+      clearDebounce();
+      pendingTranscriptRef.current = cleaned;
+
+      if (cleaned !== lastCommittedTranscriptRef.current) {
+        lastCommittedTranscriptRef.current = cleaned;
+        setFinalTranscript(cleaned);
+      }
+    },
+    [clearDebounce],
+  );
+
+  const flushFinalTranscript = useCallback((value?: string) => {
+    const nextValue = value ?? pendingTranscriptRef.current;
+    const resolved = cleanTranscript(nextValue || getResolvedFinalTranscript());
+
+    clearDebounce();
+
+    if (resolved !== lastCommittedTranscriptRef.current) {
+      lastCommittedTranscriptRef.current = resolved;
+      setFinalTranscript(resolved);
+    }
+
+    pendingTranscriptRef.current = resolved;
+    return resolved;
+  }, [clearDebounce, getResolvedFinalTranscript]);
+
+  const scheduleFinalTranscript = useCallback(
+    (value: string) => {
+      const cleaned = cleanTranscript(value);
+
+      if (cleaned === lastFinalTranscriptRef.current) return;
+
+      lastFinalTranscriptRef.current = cleaned;
+      pendingTranscriptRef.current = cleaned;
+
     clearDebounce();
     debounceRef.current = setTimeout(() => {
-      setFinalTranscript(cleanTranscript(finalBufferRef.current));
+        commitFinalTranscript(pendingTranscriptRef.current);
       debounceRef.current = null;
     }, DEBOUNCE_MS);
-  }, [clearDebounce]);
+    },
+    [clearDebounce, commitFinalTranscript],
+  );
+
+  const getLiveInterimTranscript = useCallback(() => {
+    const resolvedFinal = pendingTranscriptRef.current || getResolvedFinalTranscript();
+    return stripCommittedPrefix(resolvedFinal, interimTranscript);
+  }, [getResolvedFinalTranscript, interimTranscript]);
 
   const resolveStop = useCallback(
     (value?: string) => {
-      const resolved = cleanTranscript(value ?? finalBufferRef.current);
+      const resolved = flushFinalTranscript(value ?? getResolvedFinalTranscript());
       const resolver = stopResolverRef.current;
 
       stopResolverRef.current = null;
@@ -139,12 +256,14 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
 
       return resolved;
     },
-    [],
+    [flushFinalTranscript, getResolvedFinalTranscript],
   );
 
   const resetBuffers = useCallback(() => {
-    finalBufferRef.current = "";
-    lastFinalRef.current = "";
+    finalSegmentsRef.current.clear();
+    lastFinalTranscriptRef.current = "";
+    lastCommittedTranscriptRef.current = "";
+    pendingTranscriptRef.current = "";
     setFinalTranscript("");
     setInterimTranscript("");
   }, []);
@@ -156,10 +275,10 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    recognition.maxAlternatives = 1;
 
-    recognition.onresult = (event: any) => {
-      let currentInterim = "";
-      let nextFinal = finalBufferRef.current;
+    recognition.onresult = (event) => {
+      const interimSegments: string[] = [];
 
       clearSilenceTimer();
 
@@ -170,32 +289,31 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
         if (!text) continue;
 
         if (result.isFinal) {
-          if (text.toLowerCase() === lastFinalRef.current.toLowerCase()) continue;
-
-          nextFinal = mergeTranscript(nextFinal, text);
-          lastFinalRef.current = text;
+          finalSegmentsRef.current.set(i, text);
         } else {
-          currentInterim = mergeTranscript(currentInterim, text);
+          interimSegments.push(text);
         }
       }
 
-      if (nextFinal !== finalBufferRef.current) {
-        finalBufferRef.current = nextFinal;
-        scheduleFinalTranscript();
-      }
+      const nextFinalTranscript = getResolvedFinalTranscript();
+      scheduleFinalTranscript(nextFinalTranscript);
 
-      setInterimTranscript(currentInterim);
+      const nextInterimTranscript = stripCommittedPrefix(
+        nextFinalTranscript,
+        buildTranscript(interimSegments),
+      );
+
+      setInterimTranscript(nextInterimTranscript);
 
       silenceRef.current = setTimeout(() => {
         setInterimTranscript("");
-        flushFinalTranscript();
+        flushFinalTranscript(nextFinalTranscript);
         silenceRef.current = null;
       }, SILENCE_MS);
     };
 
     recognition.onerror = () => {
       clearSilenceTimer();
-      flushFinalTranscript();
       setInterimTranscript("");
       setIsListening(false);
       resolveStop();
@@ -209,7 +327,6 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
 
     recognition.onend = () => {
       clearSilenceTimer();
-      flushFinalTranscript();
       setInterimTranscript("");
       setIsListening(false);
       resolveStop();
@@ -226,7 +343,7 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   }, [SpeechRecognition, clearDebounce, clearSilenceTimer, flushFinalTranscript, resolveStop, scheduleFinalTranscript]);
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) return;
+    if (!recognitionRef.current || isListening) return;
 
     clearDebounce();
     clearSilenceTimer();
@@ -237,14 +354,13 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
       recognitionRef.current.start();
       setIsListening(true);
     } catch {}
-  }, [clearDebounce, clearSilenceTimer, resetBuffers]);
+  }, [clearDebounce, clearSilenceTimer, isListening, resetBuffers]);
 
   const stopListening = useCallback(() => {
     return new Promise<string>((resolve) => {
-      const currentTranscript = cleanTranscript(finalBufferRef.current);
+      const currentTranscript = flushFinalTranscript(getResolvedFinalTranscript());
 
       if (!recognitionRef.current || !isListening) {
-        flushFinalTranscript();
         resolve(resolveStop(currentTranscript));
         return;
       }
@@ -256,12 +372,11 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
       try {
         recognitionRef.current.stop();
       } catch {
-        flushFinalTranscript();
         setIsListening(false);
         resolve(resolveStop(currentTranscript));
       }
     });
-  }, [clearSilenceTimer, flushFinalTranscript, isListening, resolveStop]);
+  }, [clearSilenceTimer, flushFinalTranscript, getResolvedFinalTranscript, isListening, resolveStop]);
 
   const resetTranscript = useCallback(() => {
     clearDebounce();
