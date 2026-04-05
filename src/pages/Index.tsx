@@ -5,6 +5,7 @@ import CategoryTabs from "@/components/CategoryTabs";
 import EntryCard from "@/components/EntryCard";
 import TranscriptDisplay from "@/components/TranscriptDisplay";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { toast } from "@/hooks/use-toast";
 import { useBrainDump, type Category } from "@/hooks/useBrainDump";
 
 const Index = () => {
@@ -19,6 +20,7 @@ const Index = () => {
 
       if (transcript.trim()) {
         addEntry(transcript);
+        toast({ title: "Note saved", duration: 1800 });
       }
 
       resetTranscript();
