@@ -31,7 +31,13 @@ const Index = () => {
     }
   };
 
-  const filtered = getByCategory(activeTab);
+  const filtered = useMemo(() => {
+    const byCategory = getByCategory(activeTab);
+    if (!searchQuery.trim()) return byCategory;
+    const q = searchQuery.toLowerCase();
+    return byCategory.filter((e) => e.text.toLowerCase().includes(q));
+  }, [activeTab, getByCategory, searchQuery]);
+
   const counts: Record<Category, number> = {
     tasks: getByCategory("tasks").length,
     ideas: getByCategory("ideas").length,
