@@ -206,7 +206,8 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   );
 
   const flushFinalTranscript = useCallback((value?: string) => {
-    const resolved = cleanTranscript(value ?? (pendingTranscriptRef.current || getResolvedFinalTranscript()));
+    const nextValue = value ?? pendingTranscriptRef.current;
+    const resolved = cleanTranscript(nextValue || getResolvedFinalTranscript());
 
     clearDebounce();
 
