@@ -43,7 +43,7 @@ function loadEntries(): DumpEntry[] {
 }
 
 export function useBrainDump() {
-  const [entries, setEntries] = useState<DumpEntry[]>(loadEntries);
+  const [entries, setEntries] = useState<DumpEntry[]>(() => loadEntries());
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
