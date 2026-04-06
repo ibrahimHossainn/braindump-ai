@@ -10,31 +10,15 @@ interface SpeechRecognitionHook {
   isSupported: boolean;
 }
 
-const DEBOUNCE_MS = 450;
-const SILENCE_MS = 1500;
-
-interface SpeechRecognitionAlternativeLike {
-  transcript?: string;
-}
-
-interface SpeechRecognitionResultLike {
-  isFinal: boolean;
-  0: SpeechRecognitionAlternativeLike;
-}
-
-interface SpeechRecognitionEventLike {
-  resultIndex: number;
-  results: ArrayLike<SpeechRecognitionResultLike>;
-}
+const DEBOUNCE_MS = 400;
 
 interface BrowserSpeechRecognition {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
   maxAlternatives?: number;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: (() => void) | null;
-  onspeechend: (() => void) | null;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -43,105 +27,51 @@ interface BrowserSpeechRecognition {
 
 type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
-const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
-
-const normalizeWord = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}'’-]+/gu, "");
-
-const dedupeAdjacentWords = (value: string) => {
-  const words = normalizeWhitespace(value).split(" ").filter(Boolean);
-
-  return words
-    .filter((word, index) => index === 0 || normalizeWord(word) !== normalizeWord(words[index - 1]))
-    .join(" ");
-};
-
-const cleanTranscript = (value: string) => dedupeAdjacentWords(normalizeWhitespace(value));
-
-const getWords = (value: string) => cleanTranscript(value).split(" ").filter(Boolean);
-
-const getComparableWords = (value: string) =>
-  cleanTranscript(value)
-    .split(" ")
-    .map(normalizeWord)
-    .filter(Boolean);
-
-const wordsMatch = (left: string[], right: string[]) =>
-  left.length === right.length && left.every((word, index) => word === right[index]);
-
-const getOrderedSegmentValues = (segments: Map<number, string>) =>
-  [...segments.entries()].sort(([left], [right]) => left - right).map(([, value]) => value);
-
-const mergeTranscript = (existing: string, incoming: string) => {
-  const base = cleanTranscript(existing);
-  const next = cleanTranscript(incoming);
-
-  if (!base) return next;
-  if (!next) return base;
-
-  const baseWords = base.split(" ");
-  const nextWords = next.split(" ");
-  const baseComparable = getComparableWords(base);
-  const nextComparable = getComparableWords(next);
-
-  if (wordsMatch(baseComparable, nextComparable)) return base;
-
-  const baseIsPrefix =
-    baseComparable.length <= nextComparable.length &&
-    baseComparable.every((word, index) => word === nextComparable[index]);
-
-  if (baseIsPrefix) return next;
-
-  const nextIsSuffix =
-    nextComparable.length <= baseComparable.length &&
-    nextComparable.every(
-      (word, index) => word === baseComparable[baseComparable.length - nextComparable.length + index],
-    );
-
-  if (nextIsSuffix) return base;
-
-  const maxOverlap = Math.min(baseComparable.length, nextComparable.length);
-  let overlap = 0;
-
-  for (let size = maxOverlap; size > 0; size -= 1) {
-    const baseSlice = baseComparable.slice(baseComparable.length - size);
-    const nextSlice = nextComparable.slice(0, size);
-
-    if (wordsMatch(baseSlice, nextSlice)) {
-      overlap = size;
-      break;
+function dedupeAdjacent(text: string): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  const result: string[] = [];
+  for (const w of words) {
+    if (result.length === 0 || w.toLowerCase() !== result[result.length - 1].toLowerCase()) {
+      result.push(w);
     }
   }
+  return result.join(" ");
+}
 
-  return cleanTranscript([...baseWords, ...nextWords.slice(overlap)].join(" "));
-};
-
-const buildTranscript = (segments: string[]) =>
-  segments.reduce((transcript, segment) => mergeTranscript(transcript, segment), "");
-
-const stripCommittedPrefix = (committed: string, incoming: string) => {
-  const committedComparable = getComparableWords(committed);
-  const incomingWords = getWords(incoming);
-  const incomingComparable = incomingWords.map(normalizeWord).filter(Boolean);
-
-  if (!committedComparable.length || !incomingComparable.length) {
-    return cleanTranscript(incoming);
-  }
-
-  let overlap = 0;
-  const maxOverlap = Math.min(committedComparable.length, incomingComparable.length);
-
-  for (let size = maxOverlap; size > 0; size -= 1) {
-    const committedSlice = committedComparable.slice(committedComparable.length - size);
-    const incomingSlice = incomingComparable.slice(0, size);
-
-    if (wordsMatch(committedSlice, incomingSlice)) {
-      overlap = size;
-      break;
+/** Remove repeated phrases (2-4 word ngrams repeated consecutively) */
+function dedupeRepeatedPhrases(text: string): string {
+  let result = text;
+  for (let n = 4; n >= 2; n--) {
+    const words = result.split(/\s+/).filter(Boolean);
+    const out: string[] = [];
+    let i = 0;
+    while (i < words.length) {
+      if (i + n * 2 <= words.length) {
+        const phrase = words.slice(i, i + n).map(w => w.toLowerCase()).join(" ");
+        const next = words.slice(i + n, i + n * 2).map(w => w.toLowerCase()).join(" ");
+        if (phrase === next) {
+          // skip the duplicate
+          out.push(...words.slice(i, i + n));
+          i += n * 2;
+          // skip further repeats of the same phrase
+          while (i + n <= words.length) {
+            const check = words.slice(i, i + n).map(w => w.toLowerCase()).join(" ");
+            if (check === phrase) { i += n; } else break;
+          }
+          continue;
+        }
+      }
+      out.push(words[i]);
+      i++;
     }
+    result = out.join(" ");
   }
+  return result;
+}
 
-  return cleanTranscript(incomingWords.slice(overlap).join(" "));
-};
+function cleanFinal(text: string): string {
+  return dedupeRepeatedPhrases(dedupeAdjacent(text.replace(/\s+/g, " ").trim()));
+}
 
 export function useSpeechRecognition(): SpeechRecognitionHook {
   const [isListening, setIsListening] = useState(false);
@@ -149,124 +79,41 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   const [interimTranscript, setInterimTranscript] = useState("");
 
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const finalSegmentsRef = useRef(new Map<number, string>());
-  const lastFinalTranscriptRef = useRef("");
-  const lastCommittedTranscriptRef = useRef("");
-  const pendingTranscriptRef = useRef("");
+  // Track all final segments by their result index to avoid duplicates
+  const finalSegmentsRef = useRef<Map<number, string>>(new Map());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopResolverRef = useRef<((value: string) => void) | null>(null);
+  const isListeningRef = useRef(false);
 
   const SpeechRecognition =
     typeof window !== "undefined"
-      ? (((window as Window & {
-          SpeechRecognition?: BrowserSpeechRecognitionConstructor;
-          webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
-        }).SpeechRecognition ||
-          (window as Window & {
-            SpeechRecognition?: BrowserSpeechRecognitionConstructor;
-            webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
-          }).webkitSpeechRecognition) ?? null)
+      ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) ?? null
       : null;
 
   const isSupported = !!SpeechRecognition;
 
-  const clearDebounce = useCallback(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
+  const buildFinal = useCallback(() => {
+    const sorted = [...finalSegmentsRef.current.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, v]) => v);
+    return cleanFinal(sorted.join(" "));
   }, []);
 
-  const clearSilenceTimer = useCallback(() => {
-    if (silenceRef.current) {
-      clearTimeout(silenceRef.current);
-      silenceRef.current = null;
-    }
-  }, []);
-
-  const getResolvedFinalTranscript = useCallback(() => {
-    const transcript = buildTranscript(getOrderedSegmentValues(finalSegmentsRef.current));
-    return cleanTranscript(transcript);
-  }, []);
-
-  const commitFinalTranscript = useCallback(
-    (value: string) => {
-      const cleaned = cleanTranscript(value);
-
-      clearDebounce();
-      pendingTranscriptRef.current = cleaned;
-
-      if (cleaned !== lastCommittedTranscriptRef.current) {
-        lastCommittedTranscriptRef.current = cleaned;
-        setFinalTranscript(cleaned);
-      }
-    },
-    [clearDebounce],
-  );
-
-  const flushFinalTranscript = useCallback((value?: string) => {
-    const nextValue = value ?? pendingTranscriptRef.current;
-    const resolved = cleanTranscript(nextValue || getResolvedFinalTranscript());
-
-    clearDebounce();
-
-    if (resolved !== lastCommittedTranscriptRef.current) {
-      lastCommittedTranscriptRef.current = resolved;
-      setFinalTranscript(resolved);
-    }
-
-    pendingTranscriptRef.current = resolved;
-    return resolved;
-  }, [clearDebounce, getResolvedFinalTranscript]);
-
-  const scheduleFinalTranscript = useCallback(
-    (value: string) => {
-      const cleaned = cleanTranscript(value);
-
-      if (cleaned === lastFinalTranscriptRef.current) return;
-
-      lastFinalTranscriptRef.current = cleaned;
-      pendingTranscriptRef.current = cleaned;
-
-    clearDebounce();
-    debounceRef.current = setTimeout(() => {
-        commitFinalTranscript(pendingTranscriptRef.current);
-      debounceRef.current = null;
-    }, DEBOUNCE_MS);
-    },
-    [clearDebounce, commitFinalTranscript],
-  );
-
-  const getLiveInterimTranscript = useCallback(() => {
-    const resolvedFinal = pendingTranscriptRef.current || getResolvedFinalTranscript();
-    return stripCommittedPrefix(resolvedFinal, interimTranscript);
-  }, [getResolvedFinalTranscript, interimTranscript]);
-
-  const resolveStop = useCallback(
-    (value?: string) => {
-      const resolved = flushFinalTranscript(value ?? getResolvedFinalTranscript());
-      const resolver = stopResolverRef.current;
-
-      stopResolverRef.current = null;
-
-      if (resolver) {
-        resolver(resolved);
-      }
-
-      return resolved;
-    },
-    [flushFinalTranscript, getResolvedFinalTranscript],
-  );
-
-  const resetBuffers = useCallback(() => {
-    finalSegmentsRef.current.clear();
-    lastFinalTranscriptRef.current = "";
-    lastCommittedTranscriptRef.current = "";
-    pendingTranscriptRef.current = "";
-    setFinalTranscript("");
+  const commitFinal = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const text = buildFinal();
+    setFinalTranscript(text);
     setInterimTranscript("");
-  }, []);
+    return text;
+  }, [buildFinal]);
+
+  const resolveStop = useCallback(() => {
+    const text = commitFinal();
+    const resolver = stopResolverRef.current;
+    stopResolverRef.current = null;
+    resolver?.(text);
+    return text;
+  }, [commitFinal]);
 
   useEffect(() => {
     if (!SpeechRecognition) return;
@@ -277,57 +124,62 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     recognition.lang = "en-US";
     recognition.maxAlternatives = 1;
 
-    recognition.onresult = (event) => {
-      const interimSegments: string[] = [];
+    recognition.onresult = (event: any) => {
+      const results = event.results;
+      let interim = "";
 
-      clearSilenceTimer();
-
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        const text = cleanTranscript(result[0]?.transcript ?? "");
-
+      for (let i = event.resultIndex; i < results.length; i++) {
+        const result = results[i];
+        const text = (result[0]?.transcript ?? "").trim();
         if (!text) continue;
 
         if (result.isFinal) {
+          // Store by index — automatically overwrites if same index fires again
           finalSegmentsRef.current.set(i, text);
         } else {
-          interimSegments.push(text);
+          interim = text; // only show the latest interim
         }
       }
 
-      const nextFinalTranscript = getResolvedFinalTranscript();
-      scheduleFinalTranscript(nextFinalTranscript);
+      // Build the current final from all segments
+      const currentFinal = buildFinal();
 
-      const nextInterimTranscript = stripCommittedPrefix(
-        nextFinalTranscript,
-        buildTranscript(interimSegments),
-      );
+      // Debounce final transcript update
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setFinalTranscript(currentFinal);
+        debounceRef.current = null;
+      }, DEBOUNCE_MS);
 
-      setInterimTranscript(nextInterimTranscript);
-
-      silenceRef.current = setTimeout(() => {
+      // Show interim text that isn't already in final
+      if (interim) {
+        // Strip any overlap with final
+        const finalLower = currentFinal.toLowerCase();
+        const interimLower = interim.toLowerCase();
+        if (!finalLower.includes(interimLower)) {
+          setInterimTranscript(dedupeAdjacent(interim));
+        } else {
+          setInterimTranscript("");
+        }
+      } else {
         setInterimTranscript("");
-        flushFinalTranscript(nextFinalTranscript);
-        silenceRef.current = null;
-      }, SILENCE_MS);
+      }
     };
 
-    recognition.onerror = () => {
-      clearSilenceTimer();
-      setInterimTranscript("");
+    recognition.onerror = (event: any) => {
+      // "no-speech" and "aborted" are non-fatal
+      if (event.error === "no-speech" || event.error === "aborted") return;
       setIsListening(false);
+      isListeningRef.current = false;
       resolveStop();
     };
 
-    recognition.onspeechend = () => {
-      clearSilenceTimer();
-      setInterimTranscript("");
-      flushFinalTranscript();
-    };
-
     recognition.onend = () => {
-      clearSilenceTimer();
-      setInterimTranscript("");
+      if (isListeningRef.current) {
+        // Recognition ended unexpectedly (e.g. silence), restart if still listening
+        try { recognition.start(); } catch { /* ignore */ }
+        return;
+      }
       setIsListening(false);
       resolveStop();
     };
@@ -335,55 +187,54 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     recognitionRef.current = recognition;
 
     return () => {
-      clearDebounce();
-      clearSilenceTimer();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       stopResolverRef.current = null;
       recognition.abort();
     };
-  }, [SpeechRecognition, clearDebounce, clearSilenceTimer, flushFinalTranscript, resolveStop, scheduleFinalTranscript]);
+  }, [SpeechRecognition]); // minimal deps — callbacks use refs
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current || isListening) return;
-
-    clearDebounce();
-    clearSilenceTimer();
+    if (!recognitionRef.current || isListeningRef.current) return;
+    finalSegmentsRef.current.clear();
+    setFinalTranscript("");
+    setInterimTranscript("");
     stopResolverRef.current = null;
-    resetBuffers();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     try {
       recognitionRef.current.start();
       setIsListening(true);
-    } catch {}
-  }, [clearDebounce, clearSilenceTimer, isListening, resetBuffers]);
+      isListeningRef.current = true;
+    } catch { /* already started */ }
+  }, []);
 
   const stopListening = useCallback(() => {
     return new Promise<string>((resolve) => {
-      const currentTranscript = flushFinalTranscript(getResolvedFinalTranscript());
+      isListeningRef.current = false;
 
-      if (!recognitionRef.current || !isListening) {
-        resolve(resolveStop(currentTranscript));
+      if (!recognitionRef.current) {
+        resolve(commitFinal());
         return;
       }
 
-      clearSilenceTimer();
-      setInterimTranscript("");
       stopResolverRef.current = resolve;
 
       try {
         recognitionRef.current.stop();
       } catch {
         setIsListening(false);
-        resolve(resolveStop(currentTranscript));
+        resolve(commitFinal());
       }
     });
-  }, [clearSilenceTimer, flushFinalTranscript, getResolvedFinalTranscript, isListening, resolveStop]);
+  }, [commitFinal]);
 
   const resetTranscript = useCallback(() => {
-    clearDebounce();
-    clearSilenceTimer();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    finalSegmentsRef.current.clear();
     stopResolverRef.current = null;
-    resetBuffers();
-  }, [clearDebounce, clearSilenceTimer, resetBuffers]);
+    setFinalTranscript("");
+    setInterimTranscript("");
+  }, []);
 
   return {
     isListening,

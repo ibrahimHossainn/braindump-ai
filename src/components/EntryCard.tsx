@@ -47,7 +47,7 @@ const EntryCard = ({ entry, onDelete, onToggle }: EntryCardProps) => {
 
         <button
           onClick={() => onDelete(entry.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg
+          className="p-1.5 rounded-lg transition-colors
             hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="w-4 h-4" />

@@ -50,6 +50,7 @@ const MicButton = ({ isListening, onClick, onHoldStart, onHoldEnd, isSupported }
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onContextMenu={(e) => e.preventDefault()}
         disabled={!isSupported}
         className={`
           relative z-10 w-20 h-20 rounded-full flex items-center justify-center
