@@ -99,8 +99,8 @@ const Index = () => {
             {!isSupported
               ? "Speech recognition not supported in this browser"
               : isListening
-                ? "Tap to stop & save"
-                : "Tap to start voice capture"
+                ? "Release to save · Tap to stop"
+                : "Hold to record · Tap to toggle"
             }
           </p>
         </div>

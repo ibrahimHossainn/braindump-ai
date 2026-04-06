@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Mic, MicOff } from "lucide-react";
 
 interface MicButtonProps {
