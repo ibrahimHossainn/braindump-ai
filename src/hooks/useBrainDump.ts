@@ -13,9 +13,9 @@ export interface DumpEntry {
 const STORAGE_KEY = "braindump-entries";
 
 const CATEGORY_KEYWORDS: Record<Category, string[]> = {
-  tasks: ["todo", "to do", "task", "need to", "have to", "must", "should", "finish", "complete", "do", "buy", "get", "make", "fix", "clean", "call", "send", "submit", "schedule"],
-  reminders: ["remind", "remember", "don't forget", "appointment", "meeting", "deadline", "due", "alarm", "alert", "tomorrow", "tonight", "next week", "at ", "on monday", "on tuesday", "on wednesday", "on thursday", "on friday"],
-  ideas: ["idea", "what if", "maybe", "could", "imagine", "concept", "thought", "how about", "wouldn't it be", "brainstorm", "proposal", "consider", "explore", "invent", "create"],
+  tasks: ["todo", "to do", "to-do", "task", "need to", "have to", "gotta", "must", "should", "finish", "complete", "buy", "get", "pick up", "make", "fix", "clean", "call", "send", "submit", "schedule", "do the", "work on", "set up", "prepare", "organize", "arrange", "book", "order", "pay", "return", "deliver"],
+  reminders: ["remind", "reminder", "remember", "don't forget", "do not forget", "appointment", "meeting", "deadline", "due", "alarm", "alert", "tomorrow", "tonight", "next week", "next month", "at ", "by ", "on monday", "on tuesday", "on wednesday", "on thursday", "on friday", "on saturday", "on sunday", "in the morning", "in the evening", "before", "after", "later today", "upcoming"],
+  ideas: ["idea", "what if", "maybe", "could", "imagine", "concept", "thought", "how about", "wouldn't it be", "brainstorm", "proposal", "consider", "explore", "invent", "create", "suggest", "vision", "inspiration", "dream", "plan for", "strategy", "innovation", "experiment", "try to", "possible"],
   notes: [],
 };
 
