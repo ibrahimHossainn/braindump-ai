@@ -11,6 +11,7 @@ interface SpeechRecognitionHook {
 }
 
 const DEBOUNCE_MS = 400;
+const MAX_OVERLAP_WORDS = 12;
 
 interface BrowserSpeechRecognition {
   continuous: boolean;
@@ -27,50 +28,117 @@ interface BrowserSpeechRecognition {
 
 type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
+function normalizeForCompare(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9'\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function splitWords(text: string): string[] {
+  return text.split(/\s+/).filter(Boolean);
+}
+
 function dedupeAdjacent(text: string): string {
-  const words = text.split(/\s+/).filter(Boolean);
+  const words = splitWords(text);
   const result: string[] = [];
-  for (const w of words) {
-    if (result.length === 0 || w.toLowerCase() !== result[result.length - 1].toLowerCase()) {
-      result.push(w);
+
+  for (const word of words) {
+    if (result.length === 0 || word.toLowerCase() !== result[result.length - 1].toLowerCase()) {
+      result.push(word);
     }
   }
+
   return result.join(" ");
 }
 
-/** Remove repeated phrases (2-4 word ngrams repeated consecutively) */
 function dedupeRepeatedPhrases(text: string): string {
   let result = text;
-  for (let n = 4; n >= 2; n--) {
-    const words = result.split(/\s+/).filter(Boolean);
+
+  for (let n = 5; n >= 2; n--) {
+    const words = splitWords(result);
     const out: string[] = [];
     let i = 0;
+
     while (i < words.length) {
       if (i + n * 2 <= words.length) {
-        const phrase = words.slice(i, i + n).map(w => w.toLowerCase()).join(" ");
-        const next = words.slice(i + n, i + n * 2).map(w => w.toLowerCase()).join(" ");
-        if (phrase === next) {
-          // skip the duplicate
+        const phrase = words.slice(i, i + n).map((word) => word.toLowerCase()).join(" ");
+        const nextPhrase = words.slice(i + n, i + n * 2).map((word) => word.toLowerCase()).join(" ");
+
+        if (phrase === nextPhrase) {
           out.push(...words.slice(i, i + n));
           i += n * 2;
-          // skip further repeats of the same phrase
+
           while (i + n <= words.length) {
-            const check = words.slice(i, i + n).map(w => w.toLowerCase()).join(" ");
-            if (check === phrase) { i += n; } else break;
+            const repeatedPhrase = words.slice(i, i + n).map((word) => word.toLowerCase()).join(" ");
+            if (repeatedPhrase === phrase) {
+              i += n;
+            } else {
+              break;
+            }
           }
+
           continue;
         }
       }
+
       out.push(words[i]);
-      i++;
+      i += 1;
     }
+
     result = out.join(" ");
   }
+
   return result;
 }
 
 function cleanFinal(text: string): string {
   return dedupeRepeatedPhrases(dedupeAdjacent(text.replace(/\s+/g, " ").trim()));
+}
+
+function mergeTranscript(base: string, incoming: string): string {
+  const cleanBase = cleanFinal(base);
+  const cleanIncoming = cleanFinal(incoming);
+
+  if (!cleanBase) return cleanIncoming;
+  if (!cleanIncoming) return cleanBase;
+
+  const baseNormalized = normalizeForCompare(cleanBase);
+  const incomingNormalized = normalizeForCompare(cleanIncoming);
+
+  if (!incomingNormalized || baseNormalized === incomingNormalized || baseNormalized.includes(incomingNormalized)) {
+    return cleanBase;
+  }
+
+  if (incomingNormalized.startsWith(baseNormalized) || incomingNormalized.includes(baseNormalized)) {
+    return cleanIncoming;
+  }
+
+  const baseWords = splitWords(cleanBase);
+  const incomingWords = splitWords(cleanIncoming);
+  const maxOverlap = Math.min(MAX_OVERLAP_WORDS, baseWords.length, incomingWords.length);
+
+  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+    const baseSuffix = normalizeForCompare(baseWords.slice(-overlap).join(" "));
+    const incomingPrefix = normalizeForCompare(incomingWords.slice(0, overlap).join(" "));
+
+    if (baseSuffix && baseSuffix === incomingPrefix) {
+      const suffix = incomingWords.slice(overlap).join(" ");
+      return cleanFinal([cleanBase, suffix].filter(Boolean).join(" "));
+    }
+  }
+
+  return cleanFinal(`${cleanBase} ${cleanIncoming}`);
+}
+
+function buildInterimText(finalText: string, interimText: string): string {
+  const cleanInterim = cleanFinal(interimText);
+  if (!cleanInterim) return "";
+
+  const merged = mergeTranscript(finalText, cleanInterim);
+  const mergedWords = splitWords(merged);
+  const finalWords = splitWords(cleanFinal(finalText));
+
+  if (mergedWords.length <= finalWords.length) return "";
+
+  return cleanFinal(mergedWords.slice(finalWords.length).join(" "));
 }
 
 export function useSpeechRecognition(): SpeechRecognitionHook {
@@ -79,11 +147,10 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   const [interimTranscript, setInterimTranscript] = useState("");
 
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  // Track all final segments by their result index to avoid duplicates
-  const finalSegmentsRef = useRef<Map<number, string>>(new Map());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopResolverRef = useRef<((value: string) => void) | null>(null);
   const isListeningRef = useRef(false);
+  const lastFinalTranscriptRef = useRef("");
 
   const SpeechRecognition =
     typeof window !== "undefined"
@@ -92,20 +159,29 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
 
   const isSupported = !!SpeechRecognition;
 
-  const buildFinal = useCallback(() => {
-    const sorted = [...finalSegmentsRef.current.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([, v]) => v);
-    return cleanFinal(sorted.join(" "));
+  const queueTranscriptUpdate = useCallback((text: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setFinalTranscript(cleanFinal(text));
+      debounceRef.current = null;
+    }, DEBOUNCE_MS);
   }, []);
 
   const commitFinal = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    const text = buildFinal();
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
+    const text = cleanFinal(lastFinalTranscriptRef.current);
+    lastFinalTranscriptRef.current = text;
     setFinalTranscript(text);
     setInterimTranscript("");
     return text;
-  }, [buildFinal]);
+  }, []);
 
   const resolveStop = useCallback(() => {
     const text = commitFinal();
@@ -125,49 +201,32 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: any) => {
-      const results = event.results;
-      let interim = "";
+      let nextFinal = lastFinalTranscriptRef.current;
+      let nextInterim = "";
 
-      for (let i = event.resultIndex; i < results.length; i++) {
-        const result = results[i];
-        const text = (result[0]?.transcript ?? "").trim();
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const text = cleanFinal(result[0]?.transcript ?? "");
+
         if (!text) continue;
 
         if (result.isFinal) {
-          // Store by index — automatically overwrites if same index fires again
-          finalSegmentsRef.current.set(i, text);
+          const mergedFinal = mergeTranscript(nextFinal, text);
+          if (normalizeForCompare(mergedFinal) !== normalizeForCompare(nextFinal)) {
+            nextFinal = mergedFinal;
+          }
+          nextInterim = "";
         } else {
-          interim = text; // only show the latest interim
+          nextInterim = buildInterimText(nextFinal, text);
         }
       }
 
-      // Build the current final from all segments
-      const currentFinal = buildFinal();
-
-      // Debounce final transcript update
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        setFinalTranscript(currentFinal);
-        debounceRef.current = null;
-      }, DEBOUNCE_MS);
-
-      // Show interim text that isn't already in final
-      if (interim) {
-        // Strip any overlap with final
-        const finalLower = currentFinal.toLowerCase();
-        const interimLower = interim.toLowerCase();
-        if (!finalLower.includes(interimLower)) {
-          setInterimTranscript(dedupeAdjacent(interim));
-        } else {
-          setInterimTranscript("");
-        }
-      } else {
-        setInterimTranscript("");
-      }
+      lastFinalTranscriptRef.current = cleanFinal(nextFinal);
+      queueTranscriptUpdate(lastFinalTranscriptRef.current);
+      setInterimTranscript(nextInterim);
     };
 
     recognition.onerror = (event: any) => {
-      // "no-speech" and "aborted" are non-fatal
       if (event.error === "no-speech" || event.error === "aborted") return;
       setIsListening(false);
       isListeningRef.current = false;
@@ -176,10 +235,14 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
 
     recognition.onend = () => {
       if (isListeningRef.current) {
-        // Recognition ended unexpectedly (e.g. silence), restart if still listening
-        try { recognition.start(); } catch { /* ignore */ }
+        try {
+          recognition.start();
+        } catch {
+          // Ignore restart races from the browser implementation.
+        }
         return;
       }
+
       setIsListening(false);
       resolveStop();
     };
@@ -187,30 +250,41 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     recognitionRef.current = recognition;
 
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
       stopResolverRef.current = null;
       recognition.abort();
     };
-  }, [SpeechRecognition]); // minimal deps — callbacks use refs
+  }, [SpeechRecognition, queueTranscriptUpdate, resolveStop]);
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current || isListeningRef.current) return;
-    finalSegmentsRef.current.clear();
+
+    lastFinalTranscriptRef.current = "";
+    stopResolverRef.current = null;
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
     setFinalTranscript("");
     setInterimTranscript("");
-    stopResolverRef.current = null;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     try {
       recognitionRef.current.start();
       setIsListening(true);
       isListeningRef.current = true;
-    } catch { /* already started */ }
+    } catch {
+      // Ignore duplicate start attempts.
+    }
   }, []);
 
   const stopListening = useCallback(() => {
     return new Promise<string>((resolve) => {
       isListeningRef.current = false;
+      setInterimTranscript("");
 
       if (!recognitionRef.current) {
         resolve(commitFinal());
@@ -229,8 +303,12 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   }, [commitFinal]);
 
   const resetTranscript = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    finalSegmentsRef.current.clear();
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
+    lastFinalTranscriptRef.current = "";
     stopResolverRef.current = null;
     setFinalTranscript("");
     setInterimTranscript("");
