@@ -84,14 +84,23 @@ const Index = () => {
           <MicButton
             isListening={isListening}
             onClick={handleMicClick}
+            onHoldStart={startListening}
+            onHoldEnd={async () => {
+              const transcript = await stopListening();
+              if (transcript.trim()) {
+                addEntry(transcript);
+                toast({ title: "Note saved", duration: 1800 });
+              }
+              resetTranscript();
+            }}
             isSupported={isSupported}
           />
           <p className="text-xs text-muted-foreground text-center">
             {!isSupported
               ? "Speech recognition not supported in this browser"
               : isListening
-                ? "Tap to stop & save"
-                : "Tap to start voice capture"
+                ? "Release to save · Tap to stop"
+                : "Hold to record · Tap to toggle"
             }
           </p>
         </div>
