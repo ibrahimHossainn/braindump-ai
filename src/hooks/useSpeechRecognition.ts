@@ -35,10 +35,8 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   const dedupeText = useCallback((text: string): string => {
     let result = text;
 
-    // Remove consecutive duplicate words
     result = result.replace(/\b(\w+)\s+\1\b/gi, "$1");
 
-    // Remove repeated short phrases (2-5 words)
     for (let n = 5; n >= 2; n--) {
       const words = result.split(/\s+/).filter(Boolean);
       const out: string[] = [];
