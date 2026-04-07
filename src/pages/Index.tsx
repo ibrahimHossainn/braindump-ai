@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Brain, Sparkles, Search, X } from "lucide-react";
+import { Brain, Sparkles, Search, X, Trash2 } from "lucide-react";
 import MicButton from "@/components/MicButton";
 import CategoryTabs from "@/components/CategoryTabs";
 import EntryCard from "@/components/EntryCard";
@@ -9,22 +9,22 @@ import { toast } from "@/hooks/use-toast";
 import { useBrainDump, type Category } from "@/hooks/useBrainDump";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<Category>("tasks");
+  const [activeTab, setActiveTab] = useState<Category>("notes");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+
   const { isListening, finalTranscript, interimTranscript, startListening, stopListening, resetTranscript, isSupported } =
     useSpeechRecognition();
+
   const { addEntry, deleteEntry, toggleDone, getByCategory, entries } = useBrainDump();
 
   const handleMicClick = async () => {
     if (isListening) {
       const transcript = await stopListening();
-
       if (transcript.trim()) {
         addEntry(transcript);
         toast({ title: "Note saved", duration: 1800 });
       }
-
       resetTranscript();
     } else {
       startListening();
@@ -46,32 +46,28 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-zinc-950 text-white">
       {/* Header */}
-      <header className="px-4 pt-6 pb-4">
+      <header className="px-4 pt-6 pb-4 border-b border-zinc-800">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center neon-glow">
-              <Brain className="w-5 h-5 text-neon-cyan" />
+            <div className="w-9 h-9 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight neon-text text-foreground">
-                BrainDump
-              </h1>
-              <p className="text-[10px] text-muted-foreground mono uppercase tracking-widest">
-                Voice-First AI Capture
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-cyan-400">BrainDump</h1>
+              <p className="text-xs text-zinc-400">Voice-First AI Capture</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => { setShowSearch(!showSearch); setSearchQuery(""); }}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-neon-cyan transition-colors"
+              className="text-zinc-400 hover:text-cyan-400 transition-colors"
             >
-              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+              {showSearch ? <X size={22} /> : <Search size={22} />}
             </button>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mono">
-              <Sparkles className="w-3.5 h-3.5 text-neon-purple" />
+            <div className="flex items-center gap-1 text-xs text-zinc-400">
+              <Sparkles size={16} className="text-purple-400" />
               <span>{entries.length}</span>
             </div>
           </div>
@@ -79,7 +75,7 @@ const Index = () => {
       </header>
 
       {/* Mic Section */}
-      <section className="px-4 py-8">
+      <section className="px-4 py-10">
         <div className="max-w-lg mx-auto flex flex-col items-center gap-6">
           <MicButton
             isListening={isListening}
@@ -95,50 +91,42 @@ const Index = () => {
             }}
             isSupported={isSupported}
           />
-          <p className="text-xs text-muted-foreground text-center">
-            {!isSupported
-              ? "Speech recognition not supported in this browser"
-              : isListening
-                ? "Release to save · Tap to stop"
-                : "Hold to record · Tap to toggle"
-            }
+          <p className="text-sm text-zinc-400 text-center">
+            {isListening ? "Release to save • Tap to stop" : "Hold to record • Tap to toggle"}
           </p>
         </div>
       </section>
 
-      {/* Transcript */}
+      {/* Live Transcript */}
       <div className="px-4 max-w-lg mx-auto w-full">
         <TranscriptDisplay finalTranscript={finalTranscript} interimTranscript={interimTranscript} isListening={isListening} />
       </div>
 
-      {/* Search */}
+      {/* Search Bar */}
       {showSearch && (
-        <div className="px-4 max-w-lg mx-auto w-full pb-2">
-          <div className="glass-card flex items-center gap-2 px-3 py-2">
-            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <div className="px-4 max-w-lg mx-auto pb-4">
+          <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 rounded-3xl px-4 py-3">
+            <Search size={18} className="text-zinc-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search notes..."
-              autoFocus
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+              className="bg-transparent flex-1 outline-none text-sm"
             />
           </div>
         </div>
       )}
 
-      {/* Tabs + Entries */}
-      <section className="flex-1 px-4 pt-6 pb-8">
-        <div className="max-w-lg mx-auto space-y-4">
+      {/* Tabs + Feed */}
+      <section className="flex-1 px-4 pb-8">
+        <div className="max-w-lg mx-auto">
           <CategoryTabs active={activeTab} onChange={setActiveTab} counts={counts} />
 
-          <div className="space-y-3">
+          <div className="mt-6 space-y-3">
             {filtered.length === 0 ? (
-              <div className="glass-card p-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No {activeTab} yet. Tap the mic and start talking!
-                </p>
+              <div className="text-center py-12 text-zinc-500">
+                No {activeTab} yet.<br />Hold the mic and speak!
               </div>
             ) : (
               filtered.map((entry) => (
