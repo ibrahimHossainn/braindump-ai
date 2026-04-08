@@ -1,14 +1,5 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+
+# BrainDump AI - Privacy-First Voice Note App
+Sitemap: https://braindump-ai-ebon.vercel.app/sitemap.xml
