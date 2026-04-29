@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# BrainDump AI - Privacy-First Voice Note App
+Sitemap: https://braindump-ai-ebon.vercel.app/sitemap.xml
