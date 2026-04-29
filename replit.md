@@ -25,3 +25,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## BrainDump AI
+
+Voice-first PWA at `artifacts/braindump/` (preview path `/`). Captures speech via Web Speech API, classifies into Tasks/Ideas/Reminders/Notes via `/api/classify` (with local keyword fallback), persists to localStorage (`braindump-entries-v2`), supports edit/delete/share/export-markdown. Dark glassmorphism UI with neon cyan/purple accents. Made by Md. Ibrahim Hossain — Digital Identity Strategist.
+
+Standalone Vercel-ready copy lives at `publish/braindump-ai/` (zipped at `publish/braindump-ai.zip`) for pushing to the user's GitHub repo `Braindump-AI`. The standalone version uses a Vercel Edge Function at `api/classify.ts` that calls Grok (xAI) with `GROK_API_KEY` env var.

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BrainDump AI"
+version = "1.0.0"
+id = "artifacts/braindump"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19240
+
+[services.development]
+run = "pnpm --filter @workspace/braindump run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/braindump", "run", "build" ]
+publicDir = "artifacts/braindump/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19240"
+BASE_PATH = "/"
