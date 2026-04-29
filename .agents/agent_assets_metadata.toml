@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "7HOHdpzc12uMKbrJi2XK-"
+uri = "file://publish/braindump-ai.zip"
+type = "unspecified"
+title = "BrainDump AI — Standalone Project (zip)"
