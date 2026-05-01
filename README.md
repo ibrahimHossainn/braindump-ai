@@ -1,60 +1,57 @@
-# BrainDump — Voice-First AI Capture
+# 🎙️ BrainDump AI — Voice-First Intelligence
 
-> Speak It organises everything Tasks ideas reminders notes — sorted by AI
+> **Speak. It organizes everything.**
+> A premium, privacy-first PWA that turns your voice into structured thought-streams.
 
-A premium privacy-first PWA that turns your voice into structured thought-streams Built with React Vite TypeScript Tailwind and a smart classification system for secure data processing[cite: 1, 2]
+Built with a focus on **zero cost** and **absolute privacy**. It leverages the browser's native Web Speech API to eliminate the need for expensive cloud APIs.
 
-**Author** Md Ibrahim Hossain — Digital Identity Strategist
-**License** MIT
+## 🔥 Key Highlights
+*   **Zero API Bills**: 100% powered by browser native Web Speech API.
+*   **Privacy Centric**: All processing happens on the device. No servers, no data collection.
+*   **Smart Categorization**: Automatically sorts voice notes into **Tasks, Ideas, Reminders, & Notes**.
+*   **PWA Enabled**: Install it as a native app on iOS, Android, or Desktop.
+*   **Offline First**: Entries persist in localStorage. Works without internet.
 
----
+## 🛠️ Tech Stack
+*   **Core**: React 18 + Vite + TypeScript
+*   **Styling**: Tailwind CSS + Glassmorphism UI
+*   **Voice Engine**: Web Speech API (Local)
+*   **Icons**: Lucide React
+*   **Deployment**: Vercel (Edge Functions ready)
 
-## Features
+## 💻 Development Setup
+1.  Clone the repository.
+2.  Install dependencies: `npm install`
+3.  Launch development server: `npm run dev`
+4.  Access at: `http://localhost:5173`
 
-- One-tap **voice capture** Web Speech API with on-the-fly deduplication
-- **Auto-stop after 3s of silence** — never sit there with the mic on
-- **Smart AI classification** into Tasks / Ideas / Reminders / Notes
-- **Edit delete share complete** per entry
-- **Markdown export** of your entire brain dump[cite: 1]
-- **Web Share API** with clipboard fallback[cite: 1]
-- Dark **glassmorphism** UI with neon cyan + purple accents[cite: 1]
-- 100% offline-first — entries persist in localStorage[cite: 1]
-- Installable **PWA** manifest + icons included[cite: 1]
+## 📂 Project Structure
+The project follows a clean and scalable structure:
 
----
-
-## Quick start (local dev)
-```bash
-npm install
-npm run dev
-In local dev the app gracefully falls back to a fast local keyword classifier[cite: 1] To preview the full experience locally install the Vercel CLI
-
-Bash
-npm i -g vercel
-vercel dev
-Deploying to Vercel
-1 Push this repo to GitHub[cite: 1]
-2 Import the repo on vercel.com/new[cite: 1]
-3 Vercel auto-detects Vite Build command npm run build output dist/[cite: 1]
-4 Add your API key in environment variables[cite: 1]
-
-Project structure
-The project is organized as a clean and scalable monorepo  
-
+```text
 braindump-ai/
-├── artifacts/api-server/    # Backend classification proxy[cite: 2]
-├── artifacts/braindump/     # Main application source code[cite: 2]
-├── public/                  # PWA icons manifest favicon[cite: 1]
+├── public/                  # PWA icons, manifest, favicon
 ├── src/
-│   ├── components/          # MicButton EntryCard CategoryTabs[cite: 2]
-│   ├── hooks/               # useBrainDump useSpeechRecognition[cite: 2]
-│   ├── lib/                 # AI wrapper and Markdown export[cite: 2]
-│   └── pages/               # Main application pages[cite: 2]
+│   ├── components/          # MicButton, EntryCard, CategoryTabs, Toast
+│   ├── hooks/               # useBrainDump, useSpeechRecognition
+│   ├── lib/                 # AI wrapper (Grok), Markdown export
+│   ├── pages/               # Main application page
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
+├── index.html
 ├── package.json
 ├── tailwind.config.ts
-└── tsconfig.json
-Browser support
-Voice capture uses the Web Speech API which is available in Chrome Edge and Safari iOS 14.5+[cite: 1] Firefox is not supported
+├── tsconfig.json
+└── vite.config.ts
+🚀 Deployment
+This project is optimized for Vercel.
 
-License
-MIT © Md Ibrahim Hossain
+Push code to GitHub.
+Import project on 
+1
+.
+Vercel auto-detects settings (Build: npm run build, Output: dist).
+(Optional) Add GROK_API_KEY env variable for server-side AI classification.
+📝 License
+MIT © MD. Ibrahim Hossain — Digital Identity Strategist
