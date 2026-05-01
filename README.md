@@ -56,6 +56,9 @@ Best performance in Chrome and Edge. Voice recognition is powered by the browser
 Author
 Md. Ibrahim Hossain — Digital Identity Strategist
 
+Acquisition & Licensing
+Fully functional, clean MVP ready for acquisition or further development. Perfect for anyone who wants a privacy focused voice productivity tool.
+
 License
 MIT © Md. Ibrahim Hossain
  
