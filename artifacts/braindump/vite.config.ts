@@ -18,7 +18,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Production + Vercel er jonno safe base path
+// Vercel + Production er jonno safe base path
 const basePath = process.env.BASE_PATH || '/';
 
 export default defineConfig({
@@ -27,6 +27,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    // Replit plugins only for development
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
