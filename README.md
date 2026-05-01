@@ -54,11 +54,11 @@ Browser Support
 Best performance in Chrome and Edge. Voice recognition is powered by the browser’s native Web Speech API (Safari also supported on iOS 14.5+). Firefox is not supported yet.
 
 Author
-Md. Ibrahim Hossain — Digital Identity Strategist
+Md. Ibrahim Hossain 
 
 Acquisition & Licensing
 Fully functional, clean MVP ready for acquisition or further development. Perfect for anyone who wants a privacy focused voice productivity tool.
 
 License
-MIT © Md. Ibrahim Hossain
+MIT © Md. Ibrahim Hossain — Digital Identity Strategist
  
