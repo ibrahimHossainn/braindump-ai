@@ -1,63 +1,61 @@
-# 🎙️ BrainDump AI - Voice First Intelligence
+"# 🎙️ BrainDump AI — Voice First Intelligence
 
-> **Speak. It organizes everything.**  
-> A privacy first PWA that turns your voice into structured notes in real time.
+> **Speak your thoughts. Let AI organize them.**
 
-BrainDump AI lets you speak your thoughts and automatically organizes them into **Tasks, Ideas, Reminders, and Notes** — all running locally in the browser with **zero API cost** and **full privacy**.
+BrainDump AI is a beautiful, privacy-first voice note-taking Progressive Web App (PWA) that instantly transcribes your speech and intelligently categorizes everything into **Tasks • Ideas • Reminders • Notes**.
 
-### Key Highlights
-- **Zero API Cost** — Powered entirely by the browser’s native Web Speech API
-- **Complete Privacy** — Nothing leaves your device. No servers, no tracking
-- **Smart Categorization** — Automatically sorts notes using AI (with local fallback)
-- **Installable PWA** — Works as a native app on mobile and desktop
-- **Offline First** — All entries saved in localStorage
+###  Key Features
+
+- **Hold-to-Speak** — Intuitive mic button with 3-second silence auto-stop
+- **Smart AI Categorization** — Powered by Grok (xAI) with fast local fallback
+- **100% Offline First** — Everything saved in localStorage, works without internet
+- **Installable PWA** — Feels like a native app on mobile & desktop
+- **Modern Glassmorphism Design** — Clean neon cyan & purple aesthetic
+- **Powerful Actions** — Edit, complete, delete, share, and export as Markdown
 
 ### Tech Stack
+
 - **Frontend**: React 18 + Vite + TypeScript
 - **Styling**: Tailwind CSS + Glassmorphism
-- **Voice**: Web Speech API (Local)
+- **Voice**: Web Speech API (Chrome/Edge/Safari)
+- **AI**: Grok via Vercel Edge Function (optional) + Local Keyword Classifier
 - **Icons**: Lucide React
-- **Deployment**: Vercel
 
-### Development Setup
+### Live Demo
+
+👉 **[https://braindump-ai-ebon.vercel.app](https://braindump-ai-ebon.vercel.app)**
+
+### Quick Start
+
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/ibrahimHossainn/braindump-ai.git
 cd braindump-ai
 npm install
 npm run dev
 Open http://localhost:5173
 
-Live Demo
-👉 https://braindump-ai-ebon.vercel.app
+Optional: Enable Grok AI (Recommended)
+For much better categorization:
+
+Get your free API key from x.ai/api
+Add GROK_API_KEY in Vercel Project Settings → Environment Variables
+Redeploy
+Note: Grok classification happens securely on the server via Vercel Edge. Your key never touches the browser.
 
 Project Structure
-braindump-ai/
-├── public/          # PWA icons, manifest, favicon
+publish/braindump-ai/          # Standalone version (recommended for GitHub)
+├── api/classify.ts            # Vercel Edge Function for Grok
+├── public/                    # PWA icons & manifest
 ├── src/
-│   ├── components/  # UI components
-│   ├── hooks/       # Core logic (useBrainDump, speech recognition)
-│   ├── lib/         # Utilities and AI wrapper
-│   ├── pages/
-│   ├── App.tsx
-│   └── main.tsx
-├── index.html
+│   ├── components/
+│   ├── hooks/
+│   ├── lib/
+│   └── pages/braindump.tsx
 ├── package.json
-├── vite.config.ts
-└── tailwind.config.ts
-Deployment
-Optimized for Vercel. Just connect your GitHub repository — Vercel will auto-detect Vite settings.
-
-(Optional) Add GROK_API_KEY environment variable for enhanced AI categorization.
-
-Acquisition Opportunity
-Fully functional, privacy-focused voice note-taking MVP. Ideal for:
-
-Launching a no-cost productivity tool
-Building a cross-platform note-taking ecosystem
-Adding advanced features like multi-language support
-Interested in acquiring or collaborating?
-Contact: m.ibrahimhossainn1@gmail.com
-Twitter: @_IbrahimHossain
+└── vercel.json
+Browser Support
+Best experience in Chrome and Edge. Voice recognition is powered by the browser’s native Web Speech API (Firefox currently not supported).
 
 License
-MIT © Md. Ibrahim Hossain — Digital Identity Strategist
+MIT © Md. Ibrahim Hossain — Digital Identity Strategist"
+ https://grok.com/c/884e0f27-8c9e-4bf8-9a1e-8b62b60f399c#:~:text=%23%20%F0%9F%8E%99%EF%B8%8F%20BrainDump%20AI%20%E2%80%94%20Voice,Digital%20Identity%20Strategist
