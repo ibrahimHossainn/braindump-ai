@@ -5,27 +5,27 @@
 
 Built with a focus on **zero cost** and **absolute privacy**. It leverages the browser's native Web Speech API to eliminate the need for expensive cloud APIs.
 
-## Key Highlights
+##  Key Highlights
 *   **Zero API Bills**: 100% powered by browser native Web Speech API.
 *   **Privacy Centric**: All processing happens on the device. No servers, no data collection.
 *   **Smart Categorization**: Automatically sorts voice notes into **Tasks, Ideas, Reminders, & Notes**.
 *   **PWA Enabled**: Install it as a native app on iOS, Android, or Desktop.
 *   **Offline First**: Entries persist in localStorage. Works without internet.
 
-## Tech Stack
+##  Tech Stack
 *   **Core**: React 18 + Vite + TypeScript
 *   **Styling**: Tailwind CSS + Glassmorphism UI
 *   **Voice Engine**: Web Speech API (Local)
 *   **Icons**: Lucide React
 *   **Deployment**: Vercel (Edge Functions ready)
 
-## Development Setup
+##  Development Setup
 1.  Clone the repository.
 2.  Install dependencies: `npm install`
 3.  Launch development server: `npm run dev`
 4.  Access at: `http://localhost:5173`
 
-## Project Structure
+##  Project Structure
 The project follows a clean and scalable structure:
 
 ```text
@@ -48,10 +48,20 @@ braindump-ai/
 This project is optimized for Vercel.
 
 Push code to GitHub.
-Import project on 
-1
-.
+Import project on .
 Vercel auto-detects settings (Build: npm run build, Output: dist).
 (Optional) Add GROK_API_KEY env variable for server-side AI classification.
+ Live Demo
+Check it out here: https://braindump-ai-ebon.vercel.app/
+
+ Acquisition Opportunity
+Fully functional MVP ready for scaling. Perfect for founders looking to:
+
+Launch a privacy-focused voice AI SaaS.
+Integrate OpenAI Whisper for global language support.
+Build a cross-platform productivity ecosystem.
+Contact for Acquisition: m.ibrahimhossainn1@gmail.com
+Twitter: @_IbrahimHossain
+
  License
 MIT © MD. Ibrahim Hossain - Digital Identity Strategist
